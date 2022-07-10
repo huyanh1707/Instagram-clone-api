@@ -1,4 +1,4 @@
-package com.ju17th.instagramcloneapi.payload.response;
+package com.ju17th.instagramcloneapi.payload.user.response;
 
 import java.util.List;
 

@@ -1,4 +1,4 @@
-package com.ju17th.instagramcloneapi.payload.request;
+package com.ju17th.instagramcloneapi.payload.user.request;
 
 import javax.validation.constraints.Email;
 import javax.validation.constraints.NotBlank;

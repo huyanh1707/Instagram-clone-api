@@ -1,4 +1,4 @@
-package com.ju17th.instagramcloneapi.payload.response;
+package com.ju17th.instagramcloneapi.payload.user.response;
 
 public class MessageResponse {
   private String message;
