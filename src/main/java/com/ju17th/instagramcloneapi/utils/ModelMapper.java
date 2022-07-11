@@ -15,7 +15,7 @@ public class ModelMapper {
         postResponse.setCreationDateTime(post.getCreatedDate());
         postResponse.setImagePath(post.getImagePath());
 
-        UserSummary userSummary = new UserSummary(author.getId(), author.getUsername(), author.getName(), author.getImagePath());
+        UserSummary userSummary = new UserSummary(author.getId(), author.getUsername());
         postResponse.setCreatedBy(userSummary);
 
         return postResponse;
@@ -25,8 +25,6 @@ public class ModelMapper {
         UserSummary userSummary = new UserSummary();
 
         userSummary.setId(user.getId());
-        userSummary.setName(user.getName());
-        userSummary.setImagePath(user.getImagePath());
         userSummary.setUsername(user.getUsername());
 
         return userSummary;

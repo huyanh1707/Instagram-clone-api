@@ -3,12 +3,15 @@ package com.ju17th.instagramcloneapi.service.impl;
 import com.ju17th.instagramcloneapi.entity.Follow;
 import com.ju17th.instagramcloneapi.entity.Post;
 import com.ju17th.instagramcloneapi.entity.User;
+import com.ju17th.instagramcloneapi.payload.ApiResponse;
 import com.ju17th.instagramcloneapi.payload.post.PagedResponse;
+import com.ju17th.instagramcloneapi.payload.post.request.PostRequest;
 import com.ju17th.instagramcloneapi.payload.post.response.PostResponse;
 import com.ju17th.instagramcloneapi.repository.UserRepository;
 import com.ju17th.instagramcloneapi.repository.post.FollowRepository;
 import com.ju17th.instagramcloneapi.repository.post.PostRepository;
 import com.ju17th.instagramcloneapi.security.services.UserDetailsImpl;
+import com.ju17th.instagramcloneapi.service.FileStorageService;
 import com.ju17th.instagramcloneapi.service.PostService;
 import com.ju17th.instagramcloneapi.utils.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,8 +19,12 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -37,6 +44,9 @@ public class PostServiceImpl implements PostService {
     @Autowired
     private PostRepository postRepository;
 
+    @Autowired
+    private FileStorageService fileStorageService;
+
     @Override
     public PagedResponse<PostResponse> getAllPosts(int page, int size, UserDetailsImpl currentUser) {
 
@@ -45,14 +55,14 @@ public class PostServiceImpl implements PostService {
         List<Long> followingIdsList = new ArrayList<>();
 
         for(Follow follow : followList) {
-            Long followingId = new Long(follow.getFollowing().getId());
+            Long followingId = follow.getFollowing().getId();
             if (followList.contains(followingId)) {
                continue;
             }
             followingIdsList.add(followingId);
         }
 
-        // Retrieve posts
+        // phân trang
         Pageable pageable = PageRequest.of(page, size, Sort.Direction.DESC, "createdAt");
         Page<Post> posts = postRepository.findAllPostsByFollowedUsers(followingIdsList, pageable);
 
@@ -61,16 +71,36 @@ public class PostServiceImpl implements PostService {
                     posts.getSize(), posts.getTotalElements(), posts.getTotalPages(), posts.isLast());
         }
 
-        // Map Posts to PostResponses containing photos and post creator details
+        // Map Posts với PostResponses chứa ảnh và chi tiết người tạo bài viết
         Map<Long, User> creatorMap = getPostCreatorMap(posts.getContent());
 
-        List<PostResponse> postResponses = posts.map(post -> {
-            return ModelMapper.mapPostToPostResponse(post,
-                    creatorMap.get(post.getCreatedBy()));
-        }).getContent();
+        List<PostResponse> postResponses = posts.map(post ->
+                    ModelMapper.mapPostToPostResponse(post, creatorMap.get(post.getCreatedBy()))
+        ).getContent();
 
         return new PagedResponse<>(postResponses, posts.getNumber(),
                 posts.getSize(), posts.getTotalElements(), posts.getTotalPages(), posts.isLast());
+    }
+
+    @Override
+    public ResponseEntity<?> createPost(PostRequest postRequest, MultipartFile image) {
+        String fileName = fileStorageService.storeFile(image);
+        String fileDownloadUri = ServletUriComponentsBuilder.fromCurrentContextPath()
+                .path("api/posts/images/")
+                .path(fileName)
+                .toUriString();
+
+        Post post = new Post();
+        post.setDescription(postRequest.getDescription());
+        post.setImagePath(fileDownloadUri);
+        postRepository.save(post);
+
+        URI location = ServletUriComponentsBuilder
+                .fromCurrentRequest().path("/{postId}")
+                .buildAndExpand(post.getId()).toUri();
+
+        return ResponseEntity.created(location)
+                .body(new ApiResponse(true, "Post created successfully."));
     }
 
     public Map<Long, User> getPostCreatorMap(List<Post> posts) {
