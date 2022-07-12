@@ -20,4 +20,6 @@ public interface PostService {
     ResponseEntity<?> createPost(PostRequest postRequest, MultipartFile image);
 
     Map<Long, User> getPostCreatorMap(List<Post> posts);
+
+    PostResponse getPostById(Long postId, UserDetailsImpl currentUser);
 }

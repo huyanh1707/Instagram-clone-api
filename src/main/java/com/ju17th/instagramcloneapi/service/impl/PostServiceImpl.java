@@ -3,6 +3,7 @@ package com.ju17th.instagramcloneapi.service.impl;
 import com.ju17th.instagramcloneapi.entity.Follow;
 import com.ju17th.instagramcloneapi.entity.Post;
 import com.ju17th.instagramcloneapi.entity.User;
+import com.ju17th.instagramcloneapi.exception.ResourceNotFoundException;
 import com.ju17th.instagramcloneapi.payload.ApiResponse;
 import com.ju17th.instagramcloneapi.payload.post.PagedResponse;
 import com.ju17th.instagramcloneapi.payload.post.request.PostRequest;
@@ -115,5 +116,17 @@ public class PostServiceImpl implements PostService {
                 .collect(Collectors.toMap(User::getId, Function.identity()));
 
         return creatorMap;
+    }
+
+    @Override
+    public PostResponse getPostById(Long postId, UserDetailsImpl currentUser) {
+        Post post = postRepository.findById(postId).orElseThrow(
+                () -> new ResourceNotFoundException("Post", "id", postId));
+
+        // Retrieve post creator details
+        User creator = userRepository.findById(post.getCreatedBy())
+                .orElseThrow(() -> new ResourceNotFoundException("User", "id", post.getCreatedBy()));
+
+        return ModelMapper.mapPostToPostResponse(post, creator);
     }
 }

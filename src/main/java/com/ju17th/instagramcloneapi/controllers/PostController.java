@@ -36,4 +36,9 @@ public class PostController {
         return postService.createPost(postRequest, image);
     }
 
+    @GetMapping
+    public PostResponse getPostById(@CurrentUser UserDetailsImpl currentUser,
+                                    @PathVariable Long postId) {
+        return postService.getPostById(postId, currentUser);
+    }
 }
