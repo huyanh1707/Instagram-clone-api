@@ -1,44 +1,141 @@
 package com.ju17th.instagramcloneapi.controllers;
 
-import com.ju17th.instagramcloneapi.payload.post.PagedResponse;
-import com.ju17th.instagramcloneapi.payload.post.request.PostRequest;
-import com.ju17th.instagramcloneapi.payload.post.response.PostResponse;
-import com.ju17th.instagramcloneapi.security.services.CurrentUser;
-import com.ju17th.instagramcloneapi.security.services.UserDetailsImpl;
+import com.ju17th.instagramcloneapi.payload.post.CommentRequest;
+import com.ju17th.instagramcloneapi.payload.post.PostRequest;
+import com.ju17th.instagramcloneapi.payload.post.response.*;
+import com.ju17th.instagramcloneapi.payload.post.response.comment.CommentResponse;
+import com.ju17th.instagramcloneapi.payload.post.response.like.LikeCountResponse;
+import com.ju17th.instagramcloneapi.payload.post.response.like.LikeResponse;
+import com.ju17th.instagramcloneapi.payload.post.response.like.LikedReponse;
+import com.ju17th.instagramcloneapi.payload.post.response.post.PhotoModalResponse;
+import com.ju17th.instagramcloneapi.payload.post.response.post.PostResponse;
+import com.ju17th.instagramcloneapi.payload.post.response.post.SavedPostResponse;
+import com.ju17th.instagramcloneapi.security.CurrentUser;
+import com.ju17th.instagramcloneapi.security.UserPrincipal;
+import com.ju17th.instagramcloneapi.service.CommentService;
 import com.ju17th.instagramcloneapi.service.PostService;
-import com.ju17th.instagramcloneapi.utils.PagingConstant;
+import com.ju17th.instagramcloneapi.util.AppConstants;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.Resource;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import javax.servlet.http.HttpServletRequest;
 import javax.validation.Valid;
 
 @RestController
-@RequestMapping("api/posts")
+@RequestMapping("/api/posts")
 public class PostController {
-
     @Autowired
     private PostService postService;
 
+    @Autowired
+    private CommentService commentService;
+
     @GetMapping()
-    public PagedResponse<PostResponse> getPosts(@RequestParam(value = "page", defaultValue = PagingConstant.DEFAULT_PAGE_NUMBER) int page,
-                                                @RequestParam(value = "size", defaultValue = PagingConstant.DEFAULT_PAGE_SIZE) int size,
-                                                @CurrentUser UserDetailsImpl currentUser) {
+    public PagedResponse<PostResponse> getPosts(@RequestParam(value = "page", defaultValue = AppConstants.DEFAULT_PAGE_NUMBER) int page,
+                                                @RequestParam(value = "size", defaultValue = AppConstants.DEFAULT_PAGE_SIZE) int size,
+                                                @CurrentUser UserPrincipal currentUser) {
         return postService.getAllPosts(page, size, currentUser);
     }
 
     @PostMapping
     @PreAuthorize("hasRole('USER')")
     public ResponseEntity<?> createPost(@Valid @ModelAttribute PostRequest postRequest,
-                                        @RequestParam("image")MultipartFile image) {
+                                        @RequestParam("image") MultipartFile image) {
+
         return postService.createPost(postRequest, image);
     }
 
-    @GetMapping
-    public PostResponse getPostById(@CurrentUser UserDetailsImpl currentUser,
+    @GetMapping("/{postId}")
+    public PostResponse getPostById(@CurrentUser UserPrincipal currentUser,
                                     @PathVariable Long postId) {
         return postService.getPostById(postId, currentUser);
+    }
+
+    @GetMapping("/user/{userId}")
+    public PagedResponse<PostResponse> getPostsByUserId(@CurrentUser UserPrincipal currentUser,
+                                                        @RequestParam(value = "page", defaultValue = AppConstants.DEFAULT_PAGE_NUMBER) int page,
+                                                        @RequestParam(value = "size", defaultValue = AppConstants.DEFAULT_PAGE_SIZE) int size,
+                                                        @PathVariable Long userId) {
+        return postService.getPostByUserId(currentUser, page, size, userId);
+    }
+
+    @GetMapping("/images/{fileName:.+}")
+    public ResponseEntity<Resource> getPostImage(@PathVariable String fileName, HttpServletRequest request) {
+        return postService.getPostImage(fileName, request);
+    }
+
+    @GetMapping("/{postId}/comments")
+    public PagedResponse<CommentResponse> getCommentsByPostId(@CurrentUser UserPrincipal currentUser,
+                                                              @RequestParam(value = "page", defaultValue = AppConstants.DEFAULT_PAGE_NUMBER) int page,
+                                                              @RequestParam(value = "size", defaultValue = AppConstants.DEFAULT_PAGE_SIZE) int size,
+                                                              @PathVariable Long postId) {
+        return commentService.getCommentsByPostId(currentUser, page, size, postId);
+    }
+
+    @GetMapping("/{postId}/comments/{commentId}")
+    public CommentResponse getCommentsByPostId(@CurrentUser UserPrincipal currentUser,
+                                               @PathVariable Long postId,
+                                               @PathVariable Long commentId) {
+        return commentService.getCommentByPostIdAndCommentId(currentUser, postId, commentId);
+    }
+
+    @PostMapping("/{postId}/comments")
+    @PreAuthorize("hasRole('USER')")
+    public CommentResponse addComment(@CurrentUser UserPrincipal currentUser,
+                                      @PathVariable Long postId,
+                                      @Valid @RequestBody CommentRequest commentRequest) {
+        return postService.addComment(currentUser, postId, commentRequest);
+
+    }
+
+    @PostMapping("{postId}/like")
+    @PreAuthorize("hasRole('USER')")
+    public LikedReponse likePost(@PathVariable Long postId, @CurrentUser UserPrincipal currentUser) {
+        return postService.addPostLike(postId, currentUser);
+    }
+
+    @GetMapping("/{postId}/like")
+    @PreAuthorize("hasRole('USER')")
+    public PagedResponse<LikeResponse> getLikesByPostId(@PathVariable Long postId,
+                                                        @CurrentUser UserPrincipal currentUser,
+                                                        @RequestParam(value = "page", defaultValue = AppConstants.DEFAULT_PAGE_NUMBER) int page,
+                                                        @RequestParam(value = "size", defaultValue = AppConstants.DEFAULT_PAGE_SIZE) int size) {
+        return postService.getLikesByPostId(currentUser, page, size, postId);
+    }
+
+    @GetMapping("{postId}/like/exists")
+    @PreAuthorize("hasRole('USER')")
+    public LikedReponse isPostLikedByCurrentUser(@PathVariable Long postId,
+                                                 @CurrentUser UserPrincipal currentUser) {
+        return postService.checkIfPostLiked(postId, currentUser);
+    }
+
+    @GetMapping("{postId}/like/count")
+    public LikeCountResponse getLikesCountByPostId(@PathVariable Long postId) {
+        return postService.getLikesCountByPostId(postId);
+    }
+
+    @PostMapping("{postId}/save")
+    @PreAuthorize("hasRole('USER')")
+    public SavedPostResponse savePost(@PathVariable Long postId, @CurrentUser UserPrincipal currentUser) {
+        return postService.savePostForUser(postId, currentUser);
+    }
+
+    @GetMapping("{postId}/save/exists")
+    @PreAuthorize("hasRole('USER')")
+    public SavedPostResponse isPostSavedByCurrentUser(@PathVariable Long postId,
+                                                      @CurrentUser UserPrincipal currentUser) {
+        return postService.checkIfPostSaved(postId, currentUser);
+    }
+
+    @GetMapping("{postId}/modal")
+    @PreAuthorize("hasRole('USER')")
+    public PhotoModalResponse getPhotoModalInfo(@PathVariable Long postId,
+                                                @CurrentUser UserPrincipal currentUser) {
+        return postService.getPhotoModalInfo(postId, currentUser);
     }
 }

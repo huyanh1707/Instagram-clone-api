@@ -2,7 +2,7 @@ package com.ju17th.instagramcloneapi.service;
 
 import com.ju17th.instagramcloneapi.exception.FileStorageException;
 import com.ju17th.instagramcloneapi.exception.MyFileNotFoundException;
-import com.ju17th.instagramcloneapi.utils.FileStorageProperties;
+import com.ju17th.instagramcloneapi.property.FileStorageProperties;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
@@ -33,16 +33,16 @@ public class FileStorageService {
     }
 
     public String storeFile(MultipartFile file) {
-        // chuẩn hoá tên file
+        // Normalize file name
         String fileName = StringUtils.cleanPath(file.getOriginalFilename());
 
         try {
-            // check nếu tên file chứa kí tự không hợp lệ
+            // Check if the file's name contains invalid characters
             if (fileName.contains("..")) {
                 throw new FileStorageException("Sorry! Filename contains invalid path sequence " + fileName);
             }
 
-            // Copy file tới vị trí đích (Thay thế file đã có với cùng tên)
+            // Copy file to the target location (Replacing existing file with the same name)
             Path targetLocation = this.fileStorageLocation.resolve(fileName);
             Files.copy(file.getInputStream(), targetLocation, StandardCopyOption.REPLACE_EXISTING);
 
@@ -66,4 +66,3 @@ public class FileStorageService {
         }
     }
 }
-
